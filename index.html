@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>调色可视化实验室 · 全能影视剪辑研修班 第五单元</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --line:#e3e6ec; --ink:#1f2328; --ink2:#5b6572;
+    --accent:#2b6cb0; --accent-soft:#e8f1fb; --warn:#c05621; --ok:#2f855a;
+    --scope:#12151a; --scope-line:#3a4150;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;line-height:1.6}
+  header{padding:20px 24px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{margin:0 0 4px;font-size:19px;letter-spacing:.5px}
+  header p{margin:0;color:var(--ink2);font-size:12.5px}
+  nav{display:flex;gap:6px;flex-wrap:wrap;padding:12px 24px 0;background:var(--panel);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  nav button{border:1px solid var(--line);background:#f2f4f7;color:var(--ink2);
+    padding:7px 14px;border-radius:7px 7px 0 0;cursor:pointer;font-size:13px;margin-bottom:-1px}
+  nav button.on{background:var(--panel);color:var(--accent);border-bottom:1px solid var(--panel);
+    font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
+  main{padding:20px 24px 60px;max-width:1280px;margin:0 auto}
+  .panel{display:none}
+  .panel.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;margin-bottom:16px}
+  .card h2{margin:0 0 6px;font-size:15.5px}
+  .card .sub{color:var(--ink2);font-size:12.5px;margin:0 0 14px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  @media(max-width:960px){.grid2,.grid3{grid-template-columns:1fr}}
+  label.ctl{display:block;margin:8px 0}
+  label.ctl span{display:inline-block;min-width:112px;color:var(--ink2);font-size:12.5px}
+  label.ctl b{display:inline-block;min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{width:190px;vertical-align:middle;accent-color:var(--accent)}
+  .btn{border:1px solid var(--line);background:#f2f4f7;border-radius:6px;padding:5px 12px;
+    cursor:pointer;font-size:12.5px;color:var(--ink)}
+  .btn:hover{background:var(--accent-soft);border-color:var(--accent)}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  th{background:#f2f4f7;font-weight:600}
+  canvas,svg{display:block;max-width:100%}
+  .scope-wrap{background:var(--scope);border-radius:8px;padding:8px}
+  .scope-title{color:#9aa4b2;font-size:11.5px;margin:2px 0 4px}
+  .scopes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:960px){.scopes{grid-template-columns:1fr}}
+  .flag{margin-top:12px;font-size:12.5px;padding:8px 12px;border-radius:6px;background:#f2f4f7}
+  .flag.bad{background:#fff5eb;color:var(--warn);border:1px solid #f6ad55}
+  .flag.good{background:#f0fff4;color:var(--ok);border:1px solid #9ae6b4}
+  .mono{font-variant-numeric:tabular-nums;font-family:"SFMono-Regular",Consolas,monospace}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  footer{padding:16px 24px 40px;color:var(--ink2);font-size:12px;text-align:center}
+  .blend{position:relative;width:260px;height:260px;margin:0 auto;background:#000;border-radius:8px}
+  .blend i{position:absolute;width:150px;height:150px;border-radius:50%;mix-blend-mode:screen}
+</style>
+</head>
+<body>
+<header>
+  <h1>调色可视化实验室</h1>
+  <p>全能影视剪辑研修班 · 第五单元 达芬奇调色 —— 用纯代码还原课程里只能靠屏幕演示的部分</p>
+</header>
+
+<nav>
+  <button class="on" data-t="t1">① 伽马与人眼</button>
+  <button data-t="t2">② 加色法与补色</button>
+  <button data-t="t3">③ 色彩空间马蹄图</button>
+  <button data-t="t4">④ 示波器组（实时）</button>
+  <button data-t="t5">⑤ 色轮作用域</button>
+  <button data-t="t6">⑥ 曲线与对比度</button>
+</nav>
+
+<main>
+
+<!-- ============ 1 伽马 ============ -->
+<section class="panel on" id="t1">
+  <div class="card">
+    <h2>人眼 · 相机 · 校正伽马</h2>
+    <p class="sub">对应第 05-1 讲：视杆细胞对暗部极敏感（对数伽马，曲线上弯），相机 CMOS 客观记录（线性伽马），
+      两者之差由显示器的校正伽马补齐——伽马值越大，曲线弧度越大，画面越暗。</p>
+    <div class="grid2">
+      <div>
+        <svg id="gammaSvg" viewBox="0 0 420 320" width="420" height="320"></svg>
+        <div class="legend">
+          <span><i class="dot" style="background:#2b6cb0"></i>人眼（对数伽马 · 上弯）</span>
+          <span><i class="dot" style="background:#9aa4b2"></i>相机 CMOS（线性）</span>
+          <span><i class="dot" style="background:#c05621"></i>校正伽马 γ</span>
+        </div>
+      </div>
+      <div>
+        <label class="ctl"><span>校正伽马 γ</span>
+          <input type="range" id="gVal" min="1.0" max="3.0" step="0.1" value="2.4"><b id="gValTxt">2.4</b></label>
+        <p style="color:var(--ink2);font-size:12.5px">拖动看曲线弧度变化：γ 越大 → 曲线越弯 → 画面越暗。
+          常见取值 1.8 / 2.0 / 2.2 / 2.4 / 2.6（Rec.709 = 2.4，sRGB = 2.2，DCI-P3 = 2.6）。</p>
+        <div class="scope-wrap" style="margin-top:10px">
+          <div class="scope-title">上：线性记录（相机所见）· 下：γ 校正后（人眼所见）</div>
+          <canvas id="gammaBar" width="600" height="120"></canvas>
+        </div>
+        <table style="margin-top:12px">
+          <tr><th>输入亮度</th><th>人眼感知</th><th>线性输出</th><th>γ 校正后</th></tr>
+          <tr><td class="mono">0.20</td><td class="mono" id="r1">—</td><td class="mono">0.20</td><td class="mono" id="r2">—</td></tr>
+          <tr><td class="mono">0.50</td><td class="mono" id="r3">—</td><td class="mono">0.50</td><td class="mono" id="r4">—</td></tr>
+          <tr><td class="mono">0.80</td><td class="mono" id="r5">—</td><td class="mono">0.80</td><td class="mono" id="r6">—</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 加色法 ============ -->
+<section class="panel" id="t2">
+  <div class="card">
+    <h2>三原色加色公式</h2>
+    <p class="sub">对应第 05-1 讲：红 + 绿 = 黄，绿 + 蓝 = 青，蓝 + 红 = 品，三色相加 = 白。
+      拖动三个通道的数值，让三个圆互相重叠——重叠处就是加色结果。</p>
+    <div class="grid2">
+      <div>
+        <div class="blend">
+          <i id="cR" style="background:rgb(255,0,0);left:20px;top:20px"></i>
+          <i id="cG" style="background:rgb(0,255,0);right:20px;top:20px"></i>
+          <i id="cB" style="background:rgb(0,0,255);left:55px;bottom:20px"></i>
+        </div>
+        <div style="margin-top:14px">
+          <label class="ctl"><span>R 通道</span><input type="range" id="aR" min="0" max="255" value="255"><b id="aRt">255</b></label>
+          <label class="ctl"><span>G 通道</span><input type="range" id="aG" min="0" max="255" value="255"><b id="aGt">255</b></label>
+          <label class="ctl"><span>B 通道</span><input type="range" id="aB" min="0" max="255" value="255"><b id="aBt">255</b></label>
+          <button class="btn" id="aReset">全开（白色）</button>
+          <button class="btn" id="aOff">全关（黑色）</button>
+        </div>
+      </div>
+      <div>
+        <svg id="wheelSvg" viewBox="0 0 360 360" width="360" height="360"></svg>
+        <table style="margin-top:8px">
+          <tr><th>减色公式（把白里的通道减到 0）</th><th>结果</th><th>互补关系</th></tr>
+          <tr><td class="mono">白 − 红</td><td>青</td><td>红 ↔ 青</td></tr>
+          <tr><td class="mono">白 − 绿</td><td>品</td><td>绿 ↔ 品</td></tr>
+          <tr><td class="mono">白 − 蓝</td><td>黄</td><td>蓝 ↔ 黄</td></tr>
+        </table>
+        <p style="color:var(--ink2);font-size:12.5px;margin-top:8px">
+          色环上穿过中心画 180° 的线，对面那个颜色就是它的<b>互补色</b>——课程里纠色的第一反应：
+          画面偏青就加红，偏黄就加蓝。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 马蹄图 ============ -->
+<section class="panel" id="t3">
+  <div class="card">
+    <h2>CIE 1931 马蹄图与常见色彩空间</h2>
+    <p class="sub">对应第 05-1 / 05-2 讲：色彩空间（色域）就是在马蹄图上画一个三角形，
+      由<b>基准色度（色相 + 饱和度）</b>、<b>伽马</b>、<b>白点</b>三个数值共同确定。
+      勾选下面的色彩空间看它的三角形与白点位置。</p>
+    <div class="grid2">
+      <div>
+        <svg id="cieSvg" viewBox="0 0 460 420" width="460" height="420"></svg>
+      </div>
+      <div>
+        <div id="csList"></div>
+        <table style="margin-top:12px">
+          <tr><th>色彩空间</th><th>伽马</th><th>白点</th><th>用途</th></tr>
+          <tr><td><b>Rec.709</b></td><td class="mono">2.4</td><td class="mono">D65</td><td>最通用，高清电视标准</td></tr>
+          <tr><td><b>sRGB</b></td><td class="mono">2.2</td><td class="mono">D65</td><td>互联网与打印机</td></tr>
+          <tr><td><b>Rec.2020</b></td><td class="mono">2.4</td><td class="mono">D65</td><td>HDR，范围最大</td></tr>
+          <tr><td><b>DCI-P3</b></td><td class="mono">2.6</td><td class="mono">D63</td><td>影院放映（环境全黑，故 γ 大）</td></tr>
+          <tr><td><b>Display P3</b></td><td class="mono">2.2</td><td class="mono">D65</td><td>苹果，色度同 P3</td></tr>
+        </table>
+        <p style="color:var(--ink2);font-size:12.5px;margin-top:10px">
+          色温：越高越蓝越冷（D65 = 6504K，人眼最舒服），越低越黄红越暖。
+          项目设置（第 05-2 讲）：Windows = <span class="mono">Rec.709 / Gamma 2.4</span>，Mac = <span class="mono">Rec.709-A</span>。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 示波器 ============ -->
+<section class="panel" id="t4">
+  <div class="card">
+    <h2>示波器组 · 实时模拟</h2>
+    <p class="sub">对应第 05-3 / 05-4 / 05-5 讲。拖动色轮参数，看四个示波器怎么变化。
+      默认是一张程序生成的测试图（灰阶 + EBU 彩条 + 肤色 + 暗部噪点 + 高光窗），
+      也可以载入自己的截图。</p>
+    <div class="grid2">
+      <div>
+        <div class="scope-wrap"><div class="scope-title">监视器（处理后的画面）</div>
+          <canvas id="scSrc" width="480" height="270" style="width:100%"></canvas></div>
+        <div style="margin-top:10px">
+          <button class="btn" id="loadImg">载入自己的图片…</button>
+          <input type="file" id="fileIn" accept="image/*" style="display:none">
+          <button class="btn" id="resetAll">参数归零</button>
+        </div>
+      </div>
+      <div>
+        <label class="ctl"><span>偏移 Offset</span><input type="range" id="pOff" min="-0.5" max="0.5" step="0.01" value="0"><b id="pOffT">0.00</b></label>
+        <label class="ctl"><span>暗部 Lift</span><input type="range" id="pLift" min="-0.5" max="0.5" step="0.01" value="0"><b id="pLiftT">0.00</b></label>
+        <label class="ctl"><span>中灰 Gamma</span><input type="range" id="pGam" min="-0.5" max="0.5" step="0.01" value="0"><b id="pGamT">0.00</b></label>
+        <label class="ctl"><span>亮部 Gain</span><input type="range" id="pGain" min="-0.5" max="0.5" step="0.01" value="0"><b id="pGainT">0.00</b></label>
+        <label class="ctl"><span>对比度</span><input type="range" id="pCon" min="0" max="2.5" step="0.01" value="1"><b id="pConT">1.00</b></label>
+        <label class="ctl"><span>轴心 Pivot</span><input type="range" id="pPiv" min="0.1" max="0.9" step="0.005" value="0.435"><b id="pPivT">0.435</b></label>
+        <label class="ctl"><span>饱和度</span><input type="range" id="pSat" min="0" max="2.5" step="0.01" value="1"><b id="pSatT">1.00</b></label>
+        <label class="ctl"><span>色温（冷←→暖）</span><input type="range" id="pTmp" min="-0.4" max="0.4" step="0.01" value="0"><b id="pTmpT">0.00</b></label>
+      </div>
+    </div>
+
+    <div class="scopes" style="margin-top:16px">
+      <div class="scope-wrap"><div class="scope-title">波形图 Waveform（Y 亮度 · 横轴 = 画面横向位置）</div>
+        <canvas id="scWave" width="480" height="230" style="width:100%"></canvas></div>
+      <div class="scope-wrap"><div class="scope-title">分量图 RGB Parade（三段并排 · 看偏色）</div>
+        <canvas id="scParade" width="480" height="230" style="width:100%"></canvas></div>
+      <div class="scope-wrap"><div class="scope-title">矢量图 Vectorscope（色相 + 饱和度 · 含肤色线）</div>
+        <canvas id="scVec" width="480" height="230" style="width:100%"></canvas></div>
+      <div class="scope-wrap"><div class="scope-title">直方图 Histogram（像素数量分布）</div>
+        <canvas id="scHist" width="480" height="230" style="width:100%"></canvas></div>
+    </div>
+    <div class="flag" id="scopeFlag">提示：把「亮部 Gain」往上推到波形顶部撞成一条实线，就是<b>超限</b>；
+      把「暗部 Lift」往下压到底部压成实线，就是<b>挤压</b>。</div>
+  </div>
+</section>
+
+<!-- ============ 5 色轮作用域 ============ -->
+<section class="panel" id="t5">
+  <div class="card">
+    <h2>一级校色轮：四个旋钮的作用域</h2>
+    <p class="sub">对应第 05-4 讲。横轴 = 原画面亮度（0 黑 → 1023 白），纵轴 = 调整后的亮度。
+      勾选看每条曲线各自的"手伸多长"——偏移整体动、暗部动 0 端、亮部动 1023 端，
+      中灰两端都不动但<b>实际作用区间偏下</b>（因为人眼对暗部敏感）。</p>
+    <div class="grid2">
+      <div><svg id="wheelScope" viewBox="0 0 460 340" width="460" height="340"></svg></div>
+      <div>
+        <div id="wsCtl"></div>
+        <table style="margin-top:12px">
+          <tr><th>旋钮</th><th>动得最多的位置</th><th>不动的点</th></tr>
+          <tr><td><b>偏移 Offset</b></td><td>整体</td><td>无</td></tr>
+          <tr><td><b>暗部 Lift</b></td><td>0（黑点）端</td><td>白点 1023</td></tr>
+          <tr><td><b>亮部 Gain</b></td><td>1023（白点）端</td><td>黑点 0</td></tr>
+          <tr><td><b>中灰 Gamma</b></td><td>128–256 一带（偏下）</td><td>黑点与白点</td></tr>
+        </table>
+        <div class="flag" style="margin-top:10px"><b>补偿性原则</b>：压暗部 → 提亮部（暗部被一起抬起）→
+          必须压中灰把暗部压回去。提高谁，就压低谁。</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>HDR 色轮：六档分区</h2>
+    <p class="sub">HDR 色轮把画面切成六档，建议从大范围逐级收到小范围：
+      Shadow / Light → Dark / Highlight → Black / Specular。</p>
+    <svg id="hdrSvg" viewBox="0 0 900 210" width="900" height="210"></svg>
+    <div class="legend">
+      <span><i class="dot" style="background:#805ad5"></i>暗部三档 Black / Dark / Shadow</span>
+      <span><i class="dot" style="background:#dd6b20"></i>亮部三档 Light / Highlight / Specular</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 曲线与对比度 ============ -->
+<section class="panel" id="t6">
+  <div class="card">
+    <h2>曲线工具：拖动控制点</h2>
+    <p class="sub">对应第 05-5 讲。拖动曲线上的圆点——往上抬变亮、往下压变暗（右键可删除点；
+      课程里按住 Shift 打点可保证不影响曲线其他部分）。下方灰阶条实时反映结果。</p>
+    <div class="grid2">
+      <div>
+        <svg id="curveSvg" viewBox="0 0 420 340" width="420" height="340" style="touch-action:none"></svg>
+        <div class="legend">
+          <span><i class="dot" style="background:#9aa4b2"></i>原始线性</span>
+          <span><i class="dot" style="background:#c05621"></i>当前曲线</span>
+        </div>
+        <button class="btn" id="cAdd" style="margin-top:8px">添加默认锚点</button>
+        <button class="btn" id="cReset">复位</button>
+      </div>
+      <div>
+        <div class="scope-wrap"><div class="scope-title">灰阶条：上 = 原始，下 = 曲线后</div>
+          <canvas id="curveBar" width="600" height="140"></canvas></div>
+        <div class="scope-wrap" style="margin-top:12px">
+          <div class="scope-title">直方图：上 = 原始，下 = 曲线后（看波形舒张 / 堆积）</div>
+          <canvas id="curveHist" width="600" height="160"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>对比度与轴心 · 肩部趾部</h2>
+    <p class="sub">对应第 05-7 讲。对比度以轴心为分界线向两端拉伸——中间调舒张变清晰是优点，
+      亮部暗部像素向<b>肩部（上 5%）</b>与<b>趾部（下 5%）</b>堆积是缺点。</p>
+    <div class="grid2">
+      <div>
+        <label class="ctl"><span>对比度</span><input type="range" id="kCon" min="0" max="2.5" step="0.01" value="1"><b id="kConT">1.00</b></label>
+        <label class="ctl"><span>轴心 Pivot</span><input type="range" id="kPiv" min="0.05" max="0.95" step="0.005" value="0.435"><b id="kPivT">0.435</b></label>
+        <svg id="conSvg" viewBox="0 0 420 300" width="420" height="300"></svg>
+      </div>
+      <div>
+        <div class="scope-wrap"><div class="scope-title">灰渐变经对比度处理后（注意两端堆积）</div>
+          <canvas id="conBar" width="600" height="120"></canvas></div>
+        <div class="scope-wrap" style="margin-top:12px">
+          <div class="scope-title">波形：亮部与暗部被压成实线 = 细节被盖住</div>
+          <canvas id="conWave" width="600" height="170"></canvas></div>
+        <div class="flag" style="margin-top:10px">一级校色轮的对比度会带高<b>饱和度</b>，需要反向补偿；
+          HDR 色轮里的对比度几乎不影响饱和度——这是两者最大的区别。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>全能影视剪辑研修班 · 第五单元 · 课程笔记配套可视化 · 纯 HTML / SVG / Canvas 实现</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- tab 切换 ---------- */
+var navs = document.querySelectorAll("nav button");
+navs.forEach(function(b){
+  b.onclick = function(){
+    navs.forEach(function(x){x.classList.remove("on");});
+    document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("on");});
+    b.classList.add("on");
+    document.getElementById(b.dataset.t).classList.add("on");
+  };
+});
+
+function el(id){return document.getElementById(id);}
+function svgEl(n,a){var e=document.createElementNS("http://www.w3.org/2000/svg",n);
+  for(var k in a){e.setAttribute(k,a[k]);} return e;}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+/* =========================================================
+   ① 伽马
+   ========================================================= */
+(function(){
+  var svg = el("gammaSvg"), W=420, H=320, m=44;
+  function draw(g){
+    svg.innerHTML="";
+    svg.appendChild(svgEl("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+    for(var i=0;i<=4;i++){
+      var y=m+(H-2*m)*i/4, x=m+(W-2*m)*i/4;
+      svg.appendChild(svgEl("line",{x1:m,y1:y,x2:W-m,y2:y,stroke:"#eef1f5"}));
+      svg.appendChild(svgEl("line",{x1:x,y1:m,x2:x,y2:H-m,stroke:"#eef1f5"}));
+    }
+    svg.appendChild(svgEl("line",{x1:m,y1:H-m,x2:W-m,y2:H-m,stroke:"#c7ccd4"}));
+    svg.appendChild(svgEl("line",{x1:m,y1:m,x2:m,y2:H-m,stroke:"#c7ccd4"}));
+    var t=svgEl("text",{x:W/2,y:H-8,"font-size":11,fill:"#5b6572","text-anchor":"middle"});
+    t.textContent="输入亮度（自然界 / 传感器记录）";svg.appendChild(t);
+    var t2=svgEl("text",{x:12,y:H/2,"font-size":11,fill:"#5b6572","text-anchor":"middle",
+      transform:"rotate(-90 12 "+(H/2)+")"});t2.textContent="输出亮度";svg.appendChild(t2);
+
+    function path(fn,color,w){
+      var d="";
+      for(var i=0;i<=120;i++){
+        var x=i/120, px=m+(W-2*m)*x, py=H-m-(H-2*m)*clamp(fn(x),0,1);
+        d+=(i?"L":"M")+px.toFixed(1)+" "+py.toFixed(1);
+      }
+      svg.appendChild(svgEl("path",{d:d,fill:"none",stroke:color,"stroke-width":w||2.2}));
+    }
+    path(function(x){return Math.pow(x,1/2.2);},"#2b6cb0");   // 人眼
+    path(function(x){return x;},"#9aa4b2");                   // 线性
+    path(function(x){return Math.pow(x,g);},"#c05621",2.6);   // 校正伽马
+
+    // 灰阶条
+    var c=el("gammaBar"), ctx=c.getContext("2d");
+    for(var row=0;row<2;row++){
+      for(var x=0;x<c.width;x++){
+        var v=x/(c.width-1);
+        var out=row? Math.pow(v,1/g) : v;   // 下：应用 γ 校正后的显示
+        var y0=row*60, h=58;
+        var lum=Math.round(out*255);
+        ctx.fillStyle="rgb("+lum+","+lum+","+lum+")";
+        ctx.fillRect(x,y0,1,h);
+      }
+    }
+    ctx.fillStyle="rgba(255,255,255,.85)";ctx.fillRect(0,58,200,2);
+    ["0.20","0.50","0.80"].forEach(function(s,i){
+      el("r"+(i*2+1)).textContent=Math.pow(parseFloat(s),1/2.2).toFixed(2);
+      el("r"+(i*2+2)).textContent=Math.pow(parseFloat(s),1/g).toFixed(2);
+    });
+  }
+  var s=el("gVal");
+  s.oninput=function(){el("gValTxt").textContent=parseFloat(s.value).toFixed(1);draw(parseFloat(s.value));};
+  draw(2.4);
+})();
+
+/* =========================================================
+   ② 加色法与色环
+   ========================================================= */
+(function(){
+  function upd(){
+    var r=+el("aR").value,g=+el("aG").value,b=+el("aB").value;
+    el("aRt").textContent=r;el("aGt").textContent=g;el("aBt").textContent=b;
+    el("cR").style.background="rgb("+r+",0,0)";
+    el("cG").style.background="rgb(0,"+g+",0)";
+    el("cB").style.background="rgb(0,0,"+b+")";
+  }
+  ["aR","aG","aB"].forEach(function(id){el(id).oninput=upd;});
+  el("aReset").onclick=function(){el("aR").value=el("aG").value=el("aB").value=255;upd();};
+  el("aOff").onclick=function(){el("aR").value=el("aG").value=el("aB").value=0;upd();};
+  upd();
+
+  // 色环
+  var svg=el("wheelSvg"),cx=180,cy=170,R=120,r0=52;
+  var names=["红","黄","绿","青","蓝","品"],cols=["#e53e3e","#ecc94b","#38a169","#319795","#3182ce","#d53f8c"];
+  for(var i=0;i<72;i++){
+    var a0=(i-18)*Math.PI/180, a1=(i-17)*Math.PI/180, h=i*5;
+    var c="hsl("+h+",85%,55%)";
+    var p="M "+(cx+R*Math.cos(a0))+" "+(cy+R*Math.sin(a0))+
+          " A "+R+" "+R+" 0 0 1 "+(cx+R*Math.cos(a1))+" "+(cy+R*Math.sin(a1))+
+          " L "+(cx+r0*Math.cos(a1))+" "+(cy+r0*Math.sin(a1))+
+          " A "+r0+" "+r0+" 0 0 0 "+(cx+r0*Math.cos(a0))+" "+(cy+r0*Math.sin(a0))+" Z";
+    svg.appendChild(svgEl("path",{d:p,fill:c,stroke:"none"}));
+  }
+  for(var j=0;j<6;j++){
+    var ang=(j*60-90)*Math.PI/180, rr=(R+r0)/2;
+    var x=cx+rr*Math.cos(ang), y=cy+rr*Math.sin(ang);
+    svg.appendChild(svgEl("circle",{cx:x,cy:y,r:20,fill:cols[j],stroke:"#fff","stroke-width":3}));
+    var tx=svgEl("text",{x:x,y:y+5,"font-size":13,fill:"#fff","text-anchor":"middle","font-weight":700});
+    tx.textContent=names[j];svg.appendChild(tx);
+    // 互补连线
+    var ang2=((j+3)*60-90)*Math.PI/180;
+    svg.appendChild(svgEl("line",{x1:x,y1:y,x2:cx+rr*Math.cos(ang2),y2:cy+rr*Math.sin(ang2),
+      stroke:"#1f2328","stroke-width":1,"stroke-dasharray":"3 3",opacity:.45}));
+  }
+  var t=svgEl("text",{x:cx,y:cy+5,"font-size":12,fill:"#1f2328","text-anchor":"middle"});
+  t.textContent="互补色（180° 相对）";svg.appendChild(t);
+})();
+
+/* =========================================================
+   ③ CIE 马蹄图
+   ========================================================= */
+(function(){
+  var locus=[[.1741,.0050],[.1600,.0140],[.1440,.0297],[.1241,.0578],[.0913,.1327],[.0454,.2950],
+    [.0082,.5384],[.0039,.6548],[.0743,.8338],[.1547,.8059],[.2296,.7543],[.3016,.6923],
+    [.3731,.6245],[.4441,.5547],[.5125,.4866],[.5752,.4242],[.6270,.3725],[.6658,.3340],
+    [.6915,.3083],[.7079,.2920],[.7190,.2809],[.7260,.2740],[.7300,.2700],[.7320,.2680],
+    [.7334,.2666],[.7344,.2656],[.7347,.2653]];
+  var SP={
+    "Rec.709":{p:[[.640,.330],[.300,.600],[.150,.060]],w:[.3127,.3290],c:"#2b6cb0",g:"γ2.4 / D65"},
+    "sRGB":{p:[[.640,.330],[.300,.600],[.150,.060]],w:[.3127,.3290],c:"#2f855a",g:"γ2.2 / D65"},
+    "Rec.2020":{p:[[.708,.292],[.170,.797],[.131,.046]],w:[.3127,.3290],c:"#805ad5",g:"γ2.4 / D65"},
+    "DCI-P3":{p:[[.680,.320],[.265,.690],[.150,.060]],w:[.3140,.3510],c:"#c05621",g:"γ2.6 / D63"},
+    "Display P3":{p:[[.680,.320],[.265,.690],[.150,.060]],w:[.3127,.3290],c:"#d53f8c",g:"γ2.2 / D65"}
+  };
+  var svg=el("cieSvg"),W=460,H=420,m=40;
+  var sx=function(x){return m+(x-0.0)*(W-2*m)/0.8;};
+  var sy=function(y){return H-m-(y-0.0)*(H-2*m)/0.9;};
+
+  // 用离屏 canvas 填充马蹄图颜色
+  var off=document.createElement("canvas");off.width=320;off.height=360;
+  var octx=off.getContext("2d"),img=octx.createImageData(320,360);
+  for(var py=0;py<360;py++){
+    for(var px=0;px<320;px++){
+      var X=px/320*0.8, Y=(1-py/360)*0.9;
+      var idx=(py*320+px)*4, inside=false;
+      var sum=0;
+      for(var k=0;k<locus.length-1;k++){
+        var x1=locus[k][0],y1=locus[k][1],x2=locus[k+1][0],y2=locus[k+1][1];
+        if(((y1>Y)!=(y2>Y)) && (X < (x2-x1)*(Y-y1)/(y2-y1)+x1)) inside=!inside;
+      }
+      var x0=locus[0][0],y0=locus[0][1],xe=locus[locus.length-1][0],ye=locus[locus.length-1][1];
+      if(((y0>Y)!=(ye>Y)) && (X < (xe-x0)*(Y-y0)/(ye-y0)+x0)) inside=!inside;
+      if(inside && (X+Y)<1){
+        var Z=1-X-Y;
+        var lx= 3.2406*X + -1.5372*Y + -0.4986*Z;
+        var ly= -0.9689*X + 1.8758*Y + 0.0415*Z;
+        var lz= 0.0557*X + -0.2040*Y + 1.0570*Z;
+        var mx=Math.max(lx,ly,lz)||1;
+        lx/=mx;ly/=mx;lz/=mx;
+        function enc(v){v=clamp(v,0,1);return Math.round(255*(v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055));}
+        img.data[idx]=enc(lx);img.data[idx+1]=enc(ly);img.data[idx+2]=enc(lz);img.data[idx+3]=235;
+      } else { img.data[idx+3]=0; }
+    }
+  }
+  octx.putImageData(img,0,0);
+  var dataUrl=off.toDataURL();
+
+  svg.appendChild(svgEl("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+  svg.appendChild(svgEl("image",{x:m,y:m-(H-2*m)*0.0,width:W-2*m,height:H-2*m,href:dataUrl,
+    preserveAspectRatio:"none","clip-path":"url(#cieClip)"}));
+
+  var d="";
+  locus.forEach(function(p,i){d+=(i?"L":"M")+sx(p[0]).toFixed(1)+" "+sy(p[1]).toFixed(1);});
+  d+="Z";
+  var clip=svgEl("clipPath",{id:"cieClip"});
+  clip.appendChild(svgEl("path",{d:d}));
+  svg.appendChild(clip);
+  svg.appendChild(svgEl("path",{d:d,fill:"none",stroke:"#1f2328","stroke-width":1.2}));
+
+  var t=svgEl("text",{x:W/2,y:H-10,"font-size":11,fill:"#5b6572","text-anchor":"middle"});
+  t.textContent="CIE 1931 xy 色度图（人眼可见全部颜色）";svg.appendChild(t);
+
+  var state={"Rec.709":true};
+  var list=el("csList");
+  Object.keys(SP).forEach(function(k){
+    var lab=document.createElement("label");
+    lab.style.display="block";lab.style.margin="4px 0";lab.style.fontSize="13px";
+    var cb=document.createElement("input");cb.type="checkbox";cb.checked=(k==="Rec.709");
+    cb.style.marginRight="8px";cb.onchange=function(){state[k]=cb.checked;redraw();};
+    lab.appendChild(cb);
+    var sp=document.createElement("span");
+    sp.innerHTML="<b style='color:"+SP[k].c+"'>"+k+"</b> <span style='color:#5b6572;font-size:12px'>"+SP[k].g+"</span>";
+    lab.appendChild(sp);list.appendChild(lab);
+  });
+
+  function tri(p,c){
+    var pts=p.map(function(q){return sx(q[0]).toFixed(1)+","+sy(q[1]).toFixed(1);}).join(" ");
+    svg.appendChild(svgEl("polygon",{points:pts,fill:"none",stroke:c,"stroke-width":2.2}));
+    p.forEach(function(q){
+      svg.appendChild(svgEl("circle",{cx:sx(q[0]),cy:sy(q[1]),r:4,fill:c,stroke:"#fff","stroke-width":1.5}));
+    });
+  }
+  function wp(w,c){
+    svg.appendChild(svgEl("circle",{cx:sx(w[0]),cy:sy(w[1]),r:3.6,fill:"#fff",stroke:c,"stroke-width":2}));
+  }
+  function redraw(){
+    svg.querySelectorAll(".dyn").forEach(function(n){n.remove();});
+    Object.keys(SP).forEach(function(k){
+      if(!state[k])return;
+      var g=svgEl("g",{});g.setAttribute("class","dyn");
+      svg.appendChild(g);
+      var pts=SP[k].p.map(function(q){return sx(q[0]).toFixed(1)+","+sy(q[1]).toFixed(1);}).join(" ");
+      g.appendChild(svgEl("polygon",{points:pts,fill:"none",stroke:SP[k].c,"stroke-width":2.2}));
+      SP[k].p.forEach(function(q){
+        g.appendChild(svgEl("circle",{cx:sx(q[0]),cy:sy(q[1]),r:4,fill:SP[k].c,stroke:"#fff","stroke-width":1.5}));
+      });
+      g.appendChild(svgEl("circle",{cx:sx(SP[k].w[0]),cy:sy(SP[k].w[1]),r:4,fill:"#fff",
+        stroke:SP[k].c,"stroke-width":2}));
+    });
+  }
+  redraw();
+})();
+
+/* =========================================================
+   ④ 示波器组（实时）
+   ========================================================= */
+(function(){
+  var SW=480,SH=270;
+  var src=el("scSrc"),sctx=src.getContext("2d");
+  var base=null;              // 原始 ImageData
+  var work=null;              // 处理后
+  var tmp=src.getContext("2d");
+
+  function buildTest(){
+    var c=document.createElement("canvas");c.width=SW;c.height=SH;
+    var x=c.getContext("2d");
+    // 灰阶渐变（左 1/3）
+    var g=x.createLinearGradient(0,0,SW/3,0);
+    g.addColorStop(0,"#000");g.addColorStop(1,"#fff");
+    x.fillStyle=g;x.fillRect(0,0,SW/3,SH);
+    // EBU 彩条（中 1/3）
+    var cols=["#fff","#ff0","#0ff","#0f0","#f0f","#f00","#00f"];
+    var w=(SW/3)/cols.length;
+    for(var i=0;i<cols.length;i++){x.fillStyle=cols[i];x.fillRect(SW/3+i*w,0,w+1,SH*0.55);}
+    // 肤色块
+    x.fillStyle="#c89172";x.fillRect(SW/3,SH*0.55,SW/6,SH*0.45);
+    // 暗部噪点块
+    x.fillStyle="#0b0f14";x.fillRect(SW/3+SW/6,SH*0.55,SW/6,SH*0.45);
+    // 高光窗
+    x.fillStyle="#ffffff";x.fillRect(SW/3+SW/3,SH*0.55,SW/6,SH*0.22);
+    // 中间灰
+    x.fillStyle="#7d7d7d";x.fillRect(SW/3+SW/3,SH*0.77,SW/6,SH*0.23);
+    // 噪点
+    var im=x.getImageData(0,0,SW,SH);
+    for(var p=0;p<im.data.length;p+=4){
+      var px=(p/4)%SW, py=Math.floor((p/4)/SW);
+      if(px>SW/3+SW/6 && px<SW/3+SW/3 && py>SH*0.55){
+        var n=(Math.random()-0.5)*70;
+        im.data[p]=clamp(im.data[p]+n,0,255);
+        im.data[p+1]=clamp(im.data[p+1]+n,0,255);
+        im.data[p+2]=clamp(im.data[p+2]+n,0,255);
+      }
+    }
+    x.putImageData(im,0,0);
+    return x.getImageData(0,0,SW,SH);
+  }
+  base=buildTest();
+
+  el("loadImg").onclick=function(){el("fileIn").click();};
+  el("fileIn").onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    // 用 FileReader 读成 data URL：file:// 下 blob URL 会污染 canvas，导致无法取像素
+    var fr=new FileReader();
+    fr.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        var c=document.createElement("canvas");c.width=SW;c.height=SH;
+        var x=c.getContext("2d");
+        x.fillStyle="#000";x.fillRect(0,0,SW,SH);
+        var s=Math.min(SW/img.width,SH/img.height);
+        x.drawImage(img,(SW-img.width*s)/2,(SH-img.height*s)/2,img.width*s,img.height*s);
+        base=x.getImageData(0,0,SW,SH);render();
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(f);
+  };
+
+  function params(){
+    return {
+      off:+el("pOff").value, lift:+el("pLift").value, gam:+el("pGam").value,
+      gain:+el("pGain").value, con:+el("pCon").value, piv:+el("pPiv").value,
+      sat:+el("pSat").value, tmp:+el("pTmp").value
+    };
+  }
+  function render(){
+    var P=params();
+    var d=base.data, out=sctx.createImageData(SW,SH), o=out.data;
+    var clipHi=0, clipLo=0, n=SW*SH;
+    for(var i=0;i<d.length;i+=4){
+      var r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255;
+      // gain（亮部动得多）
+      r=r*(1+P.gain);g=g*(1+P.gain);b=b*(1+P.gain);
+      // lift（暗部动得多）
+      r=r+P.lift*(1-r);g=g+P.lift*(1-g);b=b+P.lift*(1-b);
+      // gamma
+      var gp=1/(1+P.gam*1.6);
+      r=Math.pow(clamp(r,0,2),gp);g=Math.pow(clamp(g,0,2),gp);b=Math.pow(clamp(b,0,2),gp);
+      // offset（整体）
+      r+=P.off;g+=P.off;b+=P.off;
+      // 对比度（以 pivot 为轴）
+      r=(r-P.piv)*P.con+P.piv;g=(g-P.piv)*P.con+P.piv;b=(b-P.piv)*P.con+P.piv;
+      // 色温：右暖左冷
+      r+=P.tmp*0.25;b-=P.tmp*0.25;
+      // 饱和度
+      var Y=0.2126*r+0.7152*g+0.0722*b;
+      r=Y+(r-Y)*P.sat;g=Y+(g-Y)*P.sat;b=Y+(b-Y)*P.sat;
+      if(r>=1||g>=1||b>=1)clipHi++;
+      if(r<=0||g<=0||b<=0)clipLo++;
+      o[i]=clamp(r,0,1)*255;o[i+1]=clamp(g,0,1)*255;o[i+2]=clamp(b,0,1)*255;o[i+3]=255;
+    }
+    sctx.putImageData(out,0,0);
+    work=out;
+    drawScopes(out);
+    var f=el("scopeFlag");
+    var hi=clipHi/n*100, lo=clipLo/n*100;
+    var msg=[];
+    if(hi>0.5)msg.push("亮部超限 "+hi.toFixed(1)+"%");
+    if(lo>2)msg.push("暗部挤压 "+lo.toFixed(1)+"%");
+    if(msg.length){f.className="flag bad";f.innerHTML="⚠ "+msg.join(" ｜ ")+
+      " —— 细节已经丢了，波形上会看到实线。";}
+    else {f.className="flag good";f.innerHTML="✓ 没有明显超限 / 挤压（亮部 "+hi.toFixed(2)+
+      "%，暗部 "+lo.toFixed(2)+"%）。继续推「亮部 Gain」或压「暗部 Lift」，看示波器什么时候变成实线。";}
+  }
+
+  function scopeBase(c){
+    var x=c.getContext("2d");
+    x.fillStyle="#12151a";x.fillRect(0,0,c.width,c.height);
+    grid(x,c.width,c.height);
+    return x;
+  }
+  function addPt(img,px,py,r,g,b){
+    px=px|0;py=py|0;
+    if(px<0||py<0||px>=img.width||py>=img.height)return;
+    var i=(py*img.width+px)*4;
+    img.data[i]=Math.min(255,img.data[i]+r);
+    img.data[i+1]=Math.min(255,img.data[i+1]+g);
+    img.data[i+2]=Math.min(255,img.data[i+2]+b);
+    img.data[i+3]=255;
+  }
+  var STEP=2;   // 采样步长：兼顾密度表现与流畅度
+  function drawScopes(im){
+    var d=im.data;
+    // ---- 波形图 ----
+    var cw=el("scWave"),x=scopeBase(cw);
+    var img=x.getImageData(0,0,cw.width,cw.height);
+    for(var py=0;py<SH;py+=STEP){
+      for(var px=0;px<SW;px+=STEP){
+        var i=(py*SW+px)*4;
+        var Y=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255;
+        addPt(img,px,cw.height-4-Y*(cw.height-8),50,66,84);
+      }
+    }
+    x.putImageData(img,0,0);
+    label(x,"0（黑）",6,cw.height-6,"#6b7684");
+    label(x,"1023（白）",6,12,"#6b7684");
+
+    // ---- 分量图 ----
+    var cp=el("scParade"),xp=scopeBase(cp);
+    var imgp=xp.getImageData(0,0,cp.width,cp.height);
+    var seg=cp.width/3, add=[[72,26,26],[26,66,36],[30,50,80]];
+    for(var s=0;s<3;s++){
+      var x0=s*seg;
+      for(var py2=0;py2<SH;py2+=STEP){
+        for(var px2=0;px2<SW;px2+=STEP){
+          var i2=(py2*SW+px2)*4;
+          var v=d[i2+s]/255;
+          addPt(imgp,x0+px2/SW*seg, cp.height-4-v*(cp.height-8),add[s][0],add[s][1],add[s][2]);
+        }
+      }
+    }
+    xp.putImageData(imgp,0,0);
+    xp.strokeStyle="rgba(255,255,255,.16)";
+    for(var s2=0;s2<3;s2++){xp.strokeRect(s2*seg,0,seg,cp.height);}
+    for(var s3=0;s3<3;s3++){label(xp,["R","G","B"][s3],s3*seg+6,14,"#c9d1dc");}
+
+    // ---- 矢量图 ----
+    var cv=el("scVec"),xv=cv.getContext("2d");
+    xv.fillStyle="#12151a";xv.fillRect(0,0,cv.width,cv.height);
+    var cx=cv.width/2, cy=cv.height/2, R=cv.height/2-22;
+    xv.strokeStyle="#2c3340";
+    for(var rr=0.25;rr<=1.001;rr+=0.25){
+      xv.beginPath();xv.arc(cx,cy,R*rr,0,Math.PI*2);xv.stroke();
+    }
+    // 肤色指示线
+    var skinAng=(33-90)*Math.PI/180;
+    xv.strokeStyle="#e0a458";xv.setLineDash([4,3]);
+    xv.beginPath();xv.moveTo(cx-R*Math.cos(skinAng),cy+R*Math.sin(skinAng));
+    xv.lineTo(cx+R*Math.cos(skinAng),cy-R*Math.sin(skinAng));xv.stroke();xv.setLineDash([]);
+    // 目标框
+    var boxes=[["R",0],["Y",60],["G",120],["C",180],["B",240],["M",300]];
+    boxes.forEach(function(bb){
+      var a=(bb[1]-90)*Math.PI/180;
+      [R*0.75,R*1.0].forEach(function(rr2,k){
+        var bx=cx+rr2*Math.cos(a), by=cy+rr2*Math.sin(a), sz=k?9:6;
+        xv.strokeStyle="rgba(200,210,225,"+(k?0.75:0.45)+")";
+        xv.strokeRect(bx-sz/2,by-sz/2,sz,sz);
+      });
+      var tx=cx+R*1.12*Math.cos(a), ty=cy+R*1.12*Math.sin(a);
+      label(xv,bb[0],tx-3,ty+4,"#8b95a5");
+    });
+    // 像素点
+    var imgv=xv.getImageData(0,0,cv.width,cv.height);
+    for(var py3=0;py3<SH;py3+=STEP){
+      for(var px3=0;px3<SW;px3+=STEP){
+        var i3=(py3*SW+px3)*4;
+        var R0=d[i3],G0=d[i3+1],B0=d[i3+2];
+        var mx=Math.max(R0,G0,B0),mn=Math.min(R0,G0,B0);
+        var chroma=(mx-mn)/255;
+        if(chroma<0.03){addPt(imgv,cx,cy,70,70,70);continue;}
+        var h;
+        if(mx===R0)h=60*(((G0-B0)/(mx-mn))%6);
+        else if(mx===G0)h=60*((B0-R0)/(mx-mn)+2);
+        else h=60*((R0-G0)/(mx-mn)+4);
+        if(h<0)h+=360;
+        var a2=(h-90)*Math.PI/180, rad=chroma*R*1.35;
+        addPt(imgv,cx+rad*Math.cos(a2),cy+rad*Math.sin(a2),38,84,62);
+      }
+    }
+    xv.putImageData(imgv,0,0);
+    label(xv,"肤色线",cx+R*0.62,cy-R*0.42,"#e0a458");
+
+    // ---- 直方图 ----
+    var ch=el("scHist"),xh=scopeBase(ch);
+    var binsR=new Array(64).fill(0),binsG=new Array(64).fill(0),binsB=new Array(64).fill(0);
+    var mxN=1;
+    for(var i4=0;i4<d.length;i4+=4*STEP){
+      var r5=d[i4]/255,g5=d[i4+1]/255,b5=d[i4+2]/255;
+      var ir=Math.min(63,Math.floor(r5*64)),ig=Math.min(63,Math.floor(g5*64)),ib=Math.min(63,Math.floor(b5*64));
+      binsR[ir]++;binsG[ig]++;binsB[ib]++;
+      mxN=Math.max(mxN,binsR[ir],binsG[ig],binsB[ib]);
+    }
+    var bw=ch.width/64;
+    [[binsR,"rgba(230,90,90,.85)"],[binsG,"rgba(80,200,120,.85)"],[binsB,"rgba(90,150,235,.85)"]]
+      .forEach(function(set){
+        xh.fillStyle=set[1];
+        for(var k=0;k<64;k++){
+          var hh=set[0][k]/mxN*(ch.height-16);
+          xh.fillRect(k*bw,ch.height-6-hh,bw-0.6,hh);
+        }
+      });
+    label(xh,"0",4,ch.height-8,"#6b7684");label(xh,"1023",ch.width-38,ch.height-8,"#6b7684");
+  }
+  function grid(x,w,h){
+    x.strokeStyle="#232a35";
+    for(var i=1;i<4;i++){
+      x.beginPath();x.moveTo(0,h*i/4);x.lineTo(w,h*i/4);x.stroke();
+      x.beginPath();x.moveTo(w*i/4,0);x.lineTo(w*i/4,h);x.stroke();
+    }
+  }
+  function label(x,t,px,py,c){x.fillStyle=c||"#6b7684";x.font="10px sans-serif";x.fillText(t,px,py);}
+
+  var pending=false;
+  function requestRender(){
+    if(pending)return;
+    pending=true;
+    (window.requestAnimationFrame||window.setTimeout)(function(){pending=false;render();},16);
+  }
+  ["pOff","pLift","pGam","pGain","pCon","pPiv","pSat","pTmp"].forEach(function(id){
+    el(id).oninput=function(){
+      el(id+"T").textContent=(+el(id).value).toFixed(3).slice(0,5);
+      requestRender();
+    };
+  });
+  el("resetAll").onclick=function(){
+    el("pOff").value=el("pLift").value=el("pGam").value=el("pGain").value=el("pTmp").value=0;
+    el("pCon").value=1;el("pPiv").value=0.435;el("pSat").value=1;
+    ["pOff","pLift","pGam","pGain","pCon","pPiv","pSat","pTmp"].forEach(function(id){
+      el(id+"T").textContent=el(id).value;});
+    render();
+  };
+  render();
+})();
+
+/* =========================================================
+   ⑤ 色轮作用域 + HDR 六档
+   ========================================================= */
+(function(){
+  var svg=el("wheelScope"),W=460,H=340,m=42;
+  var state={offset:true,lift:true,gamma:true,gain:true};
+  var defs=[
+    {k:"lift",n:"暗部 Lift",c:"#3182ce",f:function(x){return x+0.45*(1-x)*x*0+0.45*(1-x)*(1-x);}},
+    {k:"gamma",n:"中灰 Gamma",c:"#38a169",f:function(x){return Math.pow(x,1/1.6);}},
+    {k:"gain",n:"亮部 Gain",c:"#dd6b20",f:function(x){return x*1.45;}},
+    {k:"offset",n:"偏移 Offset",c:"#805ad5",f:function(x){return x+0.28;}}
+  ];
+  var box=el("wsCtl");
+  defs.forEach(function(d){
+    var lab=document.createElement("label");
+    lab.style.display="block";lab.style.margin="5px 0";lab.style.fontSize="13px";
+    var cb=document.createElement("input");cb.type="checkbox";cb.checked=true;
+    cb.style.marginRight="8px";
+    cb.onchange=function(){state[d.k]=cb.checked;draw();};
+    lab.appendChild(cb);
+    var sp=document.createElement("span");
+    sp.innerHTML="<b style='color:"+d.c+"'>"+d.n+"</b>";
+    lab.appendChild(sp);box.appendChild(lab);
+  });
+  function draw(){
+    svg.innerHTML="";
+    svg.appendChild(svgEl("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+    for(var i=0;i<=4;i++){
+      svg.appendChild(svgEl("line",{x1:m,y1:m+(H-2*m)*i/4,x2:W-m,y2:m+(H-2*m)*i/4,stroke:"#eef1f5"}));
+      svg.appendChild(svgEl("line",{x1:m+(W-2*m)*i/4,y1:m,x2:m+(W-2*m)*i/4,y2:H-m,stroke:"#eef1f5"}));
+    }
+    svg.appendChild(svgEl("line",{x1:m,y1:H-m,x2:W-m,y2:H-m,stroke:"#c7ccd4"}));
+    svg.appendChild(svgEl("line",{x1:m,y1:m,x2:m,y2:H-m,stroke:"#c7ccd4"}));
+    var t=svgEl("text",{x:W/2,y:H-8,"font-size":11,fill:"#5b6572","text-anchor":"middle"});
+    t.textContent="原画面亮度（0 黑 → 1023 白）";svg.appendChild(t);
+    var t2=svgEl("text",{x:14,y:H/2,"font-size":11,fill:"#5b6572","text-anchor":"middle",
+      transform:"rotate(-90 14 "+(H/2)+")"});t2.textContent="调整后亮度";svg.appendChild(t2);
+    // 参考线
+    var dref="M "+m+" "+(H-m)+" L "+(W-m)+" "+m;
+    svg.appendChild(svgEl("path",{d:dref,fill:"none",stroke:"#c7ccd4","stroke-width":1.5,"stroke-dasharray":"4 4"}));
+    defs.forEach(function(dd){
+      if(!state[dd.k])return;
+      var p="";
+      for(var i=0;i<=100;i++){
+        var x=i/100,px=m+(W-2*m)*x,py=H-m-(H-2*m)*clamp(dd.f(x),0,1);
+        p+=(i?"L":"M")+px.toFixed(1)+" "+py.toFixed(1);
+      }
+      svg.appendChild(svgEl("path",{d:p,fill:"none",stroke:dd.c,"stroke-width":2.4}));
+    });
+    // 标注 128 / 256 一带（中灰的实际作用区）
+    var x128=m+(W-2*m)*0.125;
+    svg.appendChild(svgEl("line",{x1:x128,y1:m,x2:x128,y2:H-m,stroke:"#38a169","stroke-width":1,
+      "stroke-dasharray":"2 3",opacity:.6}));
+    var tt=svgEl("text",{x:x128+4,y:m+12,"font-size":10,fill:"#38a169"});
+    tt.textContent="128";svg.appendChild(tt);
+  }
+  draw();
+
+  // HDR 六档
+  var h=el("hdrSvg"),HW=900,HH=210,m2=40,barY=40,barH=44;
+  h.appendChild(svgEl("rect",{x:0,y:0,width:HW,height:HH,fill:"#fff"}));
+  // 底：0→1023 渐变
+  var grd=svgEl("linearGradient",{id:"g1",x1:"0",x2:"1"});
+  grd.appendChild(svgEl("stop",{offset:"0",'stop-color':"#000"}));
+  grd.appendChild(svgEl("stop",{offset:"1",'stop-color':"#fff"}));
+  var defsS=svgEl("defs",{});defsS.appendChild(grd);h.appendChild(defsS);
+  h.appendChild(svgEl("rect",{x:m2,y:barY-30,width:HW-2*m2,height:22,fill:"url(#g1)",stroke:"#c7ccd4"}));
+  var t0=svgEl("text",{x:m2,y:barY-36,"font-size":11,fill:"#5b6572"});t0.textContent="0（黑点）";h.appendChild(t0);
+  var t1=svgEl("text",{x:HW-m2-58,y:barY-36,"font-size":11,fill:"#5b6572"});t1.textContent="1023（白点）";h.appendChild(t1);
+  var dark=[[0,0.13,"Black"],[0.08,0.42,"Dark"],[0.22,0.55,"Shadow"]];
+  var light=[[0.42,0.78,"Light"],[0.62,0.93,"Highlight"],[0.86,1.0,"Specular"]];
+  var X=function(v){return m2+(HW-2*m2)*v;};
+  dark.forEach(function(b,i){
+    var y=barY+i*30;
+    h.appendChild(svgEl("rect",{x:X(b[0]),y:y,width:X(b[1])-X(b[0]),height:24,fill:"#805ad5",opacity:.85}));
+    var tt=svgEl("text",{x:X(b[0])+6,y:y+17,"font-size":12,fill:"#fff","font-weight":600});
+    tt.textContent=b[2];h.appendChild(tt);
+  });
+  light.forEach(function(b,i){
+    var y=barY+i*30;
+    h.appendChild(svgEl("rect",{x:X(b[0]),y:y,width:X(b[1])-X(b[0]),height:24,fill:"#dd6b20",opacity:.85}));
+    var tt=svgEl("text",{x:X(b[0])+6,y:y+17,"font-size":12,fill:"#fff","font-weight":600});
+    tt.textContent=b[2];h.appendChild(tt);
+  });
+  var note=svgEl("text",{x:m2,y:HH-16,"font-size":11.5,fill:"#5b6572"});
+  note.textContent="包含关系：Shadow ⊃ Dark ⊃ Black，Light ⊃ Highlight ⊃ Specular；从大范围逐级收到小范围";
+  h.appendChild(note);
+  var note2=svgEl("text",{x:m2,y:HH-2,"font-size":11.5,fill:"#5b6572"});
+  note2.textContent="Shadow 与 Light 在中灰附近有一块重合区，不影响操作";
+  h.appendChild(note2);
+})();
+
+/* =========================================================
+   ⑥ 曲线工具 + 对比度
+   ========================================================= */
+(function(){
+  var svg=el("curveSvg"),W=420,H=340,m=40;
+  var pts=[[0,0],[1,1]];
+  var drag=-1;
+  function toPx(p){return [m+(W-2*m)*p[0], H-m-(H-2*m)*p[1]];}
+  function toVal(x,y){return [clamp((x-m)/(W-2*m),0,1), clamp(1-(y-m)/(H-2*m),0,1)];}
+  function apply(v){
+    // 单调分段线性插值
+    for(var i=0;i<pts.length-1;i++){
+      if(v>=pts[i][0]&&v<=pts[i+1][0]){
+        var t=(v-pts[i][0])/(pts[i+1][0]-pts[i][0]||1);
+        return pts[i][1]+t*(pts[i+1][1]-pts[i][1]);
+      }
+    }
+    return v<pts[0][0]?pts[0][1]:pts[pts.length-1][1];
+  }
+  function draw(){
+    svg.innerHTML="";
+    svg.appendChild(svgEl("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+    for(var i=0;i<=4;i++){
+      svg.appendChild(svgEl("line",{x1:m,y1:m+(H-2*m)*i/4,x2:W-m,y2:m+(H-2*m)*i/4,stroke:"#eef1f5"}));
+      svg.appendChild(svgEl("line",{x1:m+(W-2*m)*i/4,y1:m,x2:m+(W-2*m)*i/4,y2:H-m,stroke:"#eef1f5"}));
+    }
+    svg.appendChild(svgEl("line",{x1:m,y1:H-m,x2:W-m,y2:H-m,stroke:"#c7ccd4"}));
+    svg.appendChild(svgEl("line",{x1:m,y1:m,x2:m,y2:H-m,stroke:"#c7ccd4"}));
+    var a=toPx([0,0]),b=toPx([1,1]);
+    svg.appendChild(svgEl("line",{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:"#9aa4b2","stroke-width":1.6,
+      "stroke-dasharray":"4 4"}));
+    var d="";
+    for(var j=0;j<=100;j++){
+      var v=j/100,p=toPx([v,apply(v)]);
+      d+=(j?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1);
+    }
+    svg.appendChild(svgEl("path",{d:d,fill:"none",stroke:"#c05621","stroke-width":2.6}));
+    pts.forEach(function(p,i){
+      var q=toPx(p);
+      var c=svgEl("circle",{cx:q[0],cy:q[1],r:6,fill:"#fff",stroke:"#c05621","stroke-width":2.4,
+        style:"cursor:pointer"});
+      c.onmousedown=function(ev){drag=i;ev.preventDefault();};
+      c.oncontextmenu=function(ev){ev.preventDefault();if(pts.length>2){pts.splice(i,1);draw();}};
+      svg.appendChild(c);
+    });
+    var t=svgEl("text",{x:W/2,y:H-8,"font-size":11,fill:"#5b6572","text-anchor":"middle"});
+    t.textContent="输入（左黑 → 右白）　·　拖动圆点 / 右键删除";svg.appendChild(t);
+    renderBars();
+  }
+  function renderBars(){
+    var c=el("curveBar"),x=c.getContext("2d");
+    x.clearRect(0,0,c.width,c.height);
+    for(var px=0;px<c.width;px++){
+      var v=px/(c.width-1);
+      var l1=Math.round(v*255), l2=Math.round(clamp(apply(v),0,1)*255);
+      x.fillStyle="rgb("+l1+","+l1+","+l1+")";x.fillRect(px,0,1,58);
+      x.fillStyle="rgb("+l2+","+l2+","+l2+")";x.fillRect(px,62,1,58);
+    }
+    // 直方图（灰渐变的像素分布近似均匀）
+    var chh=el("curveHist"),xh=chh.getContext("2d");
+    xh.fillStyle="#12151a";xh.fillRect(0,0,chh.width,chh.height);
+    xh.strokeStyle="#232a35";
+    for(var g=1;g<4;g++){xh.beginPath();xh.moveTo(0,chh.height*g/4);xh.lineTo(chh.width,chh.height*g/4);xh.stroke();}
+    var bins=new Array(chh.width).fill(0);
+    for(var i2=0;i2<chh.width;i2++){
+      var vv=i2/(chh.width-1), ov=clamp(apply(vv),0,1);
+      bins[Math.min(chh.width-1,Math.floor(ov*(chh.width-1)))]+=1;
+    }
+    var mxb=Math.max.apply(null,bins);
+    for(var k=0;k<chh.width;k++){
+      var hh=bins[k]/mxb*(chh.height-24);
+      var yy=(k<chh.width/2)?0:chh.height/2;   // 上原始 / 下处理后，用颜色区分
+      xh.fillStyle=k<chh.width/2?"rgba(150,160,175,.9)":"rgba(230,140,80,.95)";
+      xh.fillRect(k,chh.height-8-hh,1.4,hh);
+    }
+    xh.fillStyle="#8b95a5";xh.font="10px sans-serif";
+    xh.fillText("下方橙柱 = 曲线处理后的分布（向两端堆积即失去层次）",8,14);
+  }
+  svg.onmousemove=function(ev){
+    if(drag<0)return;
+    var r=svg.getBoundingClientRect();
+    var x=(ev.clientX-r.left)*(W/r.width), y=(ev.clientY-r.top)*(H/r.height);
+    var v=toVal(x,y);
+    pts[drag][0]=clamp(v[0],pts[drag-1]?pts[drag-1][0]+0.01:0,
+      pts[drag+1]?pts[drag+1][0]-0.01:1);
+    pts[drag][1]=v[1];
+    draw();
+  };
+  svg.onmouseup=function(){drag=-1;};
+  svg.onmouseleave=function(){drag=-1;};
+  el("cAdd").onclick=function(){
+    pts=[[0,0],[0.25,0.30],[0.5,0.5],[0.75,0.72],[1,1]];
+    pts.sort(function(a,b){return a[0]-b[0];});draw();
+  };
+  el("cReset").onclick=function(){pts=[[0,0],[1,1]];draw();};
+  draw();
+
+  // ---- 对比度 ----
+  function krender(){
+    var con=+el("kCon").value, piv=+el("kPiv").value;
+    el("kConT").textContent=con.toFixed(2);el("kPivT").textContent=piv.toFixed(3);
+    var s=el("conSvg");s.innerHTML="";
+    s.appendChild(svgEl("rect",{x:0,y:0,width:420,height:300,fill:"#fff"}));
+    var m3=40,W2=420,H2=300;
+    for(var i=0;i<=4;i++){
+      s.appendChild(svgEl("line",{x1:m3,y1:m3+(H2-2*m3)*i/4,x2:W2-m3,y2:m3+(H2-2*m3)*i/4,stroke:"#eef1f5"}));
+      s.appendChild(svgEl("line",{x1:m3+(W2-2*m3)*i/4,y1:m3,x2:m3+(W2-2*m3)*i/4,y2:H2-m3,stroke:"#eef1f5"}));
+    }
+    s.appendChild(svgEl("line",{x1:m3,y1:H2-m3,x2:W2-m3,y2:H2-m3,stroke:"#c7ccd4"}));
+    s.appendChild(svgEl("line",{x1:m3,y1:m3,x2:m3,y2:H2-m3,stroke:"#c7ccd4"}));
+    var dd="M "+m3+" "+(H2-m3)+" L "+(W2-m3)+" "+m3;
+    s.appendChild(svgEl("path",{d:dd,fill:"none",stroke:"#c7ccd4","stroke-width":1.4,"stroke-dasharray":"4 4"}));
+    function soft(v){
+      // 以轴心为界线性拉伸，超出 [0,1] 的部分被裁掉——这就是像素向肩部 / 趾部堆积的来源
+      return clamp((v-piv)*con+piv,0,1);
+    }
+    var p2="";
+    for(var j=0;j<=100;j++){
+      var v=j/100,px=m3+(W2-2*m3)*v,py=H2-m3-(H2-2*m3)*clamp(soft(v),0,1);
+      p2+=(j?"L":"M")+px.toFixed(1)+" "+py.toFixed(1);
+    }
+    s.appendChild(svgEl("path",{d:p2,fill:"none",stroke:"#c05621","stroke-width":2.6}));
+    // 轴心线
+    var pxp=m3+(W2-2*m3)*piv;
+    s.appendChild(svgEl("line",{x1:pxp,y1:m3,x2:pxp,y2:H2-m3,stroke:"#2b6cb0","stroke-width":1.6,
+      "stroke-dasharray":"5 3"}));
+    var tt=svgEl("text",{x:pxp+5,y:m3+12,"font-size":10.5,fill:"#2b6cb0"});
+    tt.textContent="轴心 "+piv.toFixed(3);s.appendChild(tt);
+    var t3=svgEl("text",{x:W2/2,y:H2-8,"font-size":11,fill:"#5b6572","text-anchor":"middle"});
+    t3.textContent="输入亮度　·　曲线以轴心为界向两端拉伸";s.appendChild(t3);
+
+    // 灰渐变条
+    var c=el("conBar"),x=c.getContext("2d");
+    for(var q=0;q<c.width;q++){
+      var v2=q/(c.width-1);
+      var o=clamp(soft(v2),0,1), l=Math.round(o*255);
+      x.fillStyle="rgb("+l+","+l+","+l+")";x.fillRect(q,0,1,c.height);
+    }
+    // 肩部趾部标记
+    x.fillStyle="rgba(192,86,33,.85)";
+    x.fillRect(0,0,c.width*0.05,4);x.fillRect(c.width*0.95,0,c.width*0.05,4);
+    x.fillStyle="#fff";x.font="10px sans-serif";x.fillText("趾部",4,16);x.fillText("肩部",c.width-36,16);
+
+    // 波形
+    var cw=el("conWave"),xw=cw.getContext("2d");
+    xw.fillStyle="#12151a";xw.fillRect(0,0,cw.width,cw.height);
+    xw.strokeStyle="#232a35";
+    for(var g2=1;g2<4;g2++){xw.beginPath();xw.moveTo(0,cw.height*g2/4);xw.lineTo(cw.width,cw.height*g2/4);xw.stroke();}
+    var bins=new Array(cw.width).fill(0);
+    for(var i3=0;i3<cw.width;i3++){
+      var vv=i3/(cw.width-1), ov=clamp(soft(vv),0,1);
+      bins[Math.min(cw.width-1,Math.floor(ov*(cw.width-1)))]+=1;
+    }
+    var mxb=1;for(var z=0;z<cw.width;z++)mxb=Math.max(mxb,bins[z]);
+    xw.fillStyle="rgba(180,220,255,.9)";
+    for(var k2=0;k2<cw.width;k2++){
+      var hh=bins[k2]/mxb*(cw.height-20);
+      xw.fillRect(k2,cw.height-10-hh,1.6,hh);
+    }
+    xw.fillStyle="#8b95a5";xw.font="10px sans-serif";
+    xw.fillText("两端出现密集高柱 = 像素向肩部 / 趾部堆积，细节被盖住",8,14);
+  }
+  el("kCon").oninput=krender;el("kPiv").oninput=krender;
+  krender();
+})();
+
+})();
+</script>
+</body>
+</html>
